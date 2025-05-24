@@ -2,3 +2,6 @@ dataset/
 dataset.zip
 *.keras
 *.h5
+
+# Jupyter Notebook
+*.ipynb_checkpoints
