@@ -1,5 +1,5 @@
 dataset/
-dataset.zip
+*.zip
 *.keras
 *.h5
 
