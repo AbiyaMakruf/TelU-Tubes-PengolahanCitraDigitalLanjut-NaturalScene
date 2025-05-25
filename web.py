@@ -49,18 +49,18 @@ CLASSES = ['buildings', 'forest', 'glacier', 'mountain', 'sea', 'street']
 IMG_WIDTH, IMG_HEIGHT = 224, 224
 
 # Path ke model (SESUAIKAN)
-MODEL_PATH_SMALL = 'saved_models/mobilenet_v3_small_finetune_best.keras'
-MODEL_PATH_LARGE = 'saved_models/mobilenet_v3_large_finetune_best.keras'
+MODEL_PATH_SMALL = 'results/model/finetune/mobilenet_v3_small_finetune_best.keras'
+MODEL_PATH_LARGE = 'results/model/finetune/mobilenet_v3_large_finetune_best.keras'
 
 # Path ke gambar contoh (SESUAIKAN)
 SAMPLE_IMAGE_DIR = 'sample_test_images/'
 sample_images_data = {
-    "Bangunan": os.path.join(SAMPLE_IMAGE_DIR, "buildings_sample.jpg"),
-    "Hutan": os.path.join(SAMPLE_IMAGE_DIR, "forest_sample.jpg"),
-    "Gletser": os.path.join(SAMPLE_IMAGE_DIR, "glacier_sample.jpg"),
-    "Gunung": os.path.join(SAMPLE_IMAGE_DIR, "mountain_sample.jpg"),
-    "Laut": os.path.join(SAMPLE_IMAGE_DIR, "sea_sample.jpg"),
-    "Jalan": os.path.join(SAMPLE_IMAGE_DIR, "street_sample.jpg"),
+    "Bangunan": os.path.join(SAMPLE_IMAGE_DIR, "buildings.jpg"),
+    "Hutan": os.path.join(SAMPLE_IMAGE_DIR, "forest.jpg"),
+    "Gletser": os.path.join(SAMPLE_IMAGE_DIR, "glacier.jpg"),
+    "Gunung": os.path.join(SAMPLE_IMAGE_DIR, "mountain.jpg"),
+    "Laut": os.path.join(SAMPLE_IMAGE_DIR, "sea.jpg"),
+    "Jalan": os.path.join(SAMPLE_IMAGE_DIR, "street.jpg"),
 }
 # Filter sample images yang benar-benar ada filenya
 valid_sample_images = {name: path for name, path in sample_images_data.items() if os.path.exists(path)}
@@ -93,9 +93,9 @@ def get_last_conv_layer_name(model):
     st.warning("Tidak dapat menemukan nama layer konvolusi terakhir secara otomatis untuk Grad-CAM. Menggunakan fallback.")
     # Fallback (HARUS DIVERIFIKASI DARI model.summary() Anda)
     if 'small' in model.name.lower() or (hasattr(model, '_name') and 'small' in model._name.lower()): # Cek _name juga
-        return 'expanded_conv_10/project/BatchNorm' # CONTOH untuk MobileNetV3Small
+        return 'activation_55' # CONTOH untuk MobileNetV3Small
     else:
-        return 'expanded_conv_15/project/BatchNorm' # CONTOH untuk MobileNetV3Large
+        return 'activation_37' # CONTOH untuk MobileNetV3Large
 
 # --- Muat Model ---
 # Model dimuat sekali saat aplikasi dimulai atau saat dipilih
