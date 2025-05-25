@@ -5,40 +5,11 @@ from tensorflow.keras.preprocessing.image import load_img, img_to_array
 import numpy as np
 from PIL import Image
 import os
-import cv2 # Diperlukan untuk beberapa operasi gambar jika tidak di utils
 
-# (Opsional) Import fungsi Grad-CAM dari utils
-# Jika Anda memindahkannya ke app_utils/grad_cam_utils.py
 try:
     from app_utils.grad_cam_utils import make_gradcam_heatmap, generate_gradcam_overlay
 except ImportError:
     st.error("Pastikan file app_utils/grad_cam_utils.py ada dan benar jika Anda memisahkan fungsi Grad-CAM.")
-    # Definisikan fungsi Grad-CAM di sini jika tidak diimpor (seperti di atas)
-    # --- PASTE FUNGSI make_gradcam_heatmap dan generate_gradcam_overlay DARI ATAS JIKA TIDAK IMPORT ---
-    def make_gradcam_heatmap(img_array_processed, model, last_conv_layer_name, pred_index=None):
-        grad_model = tf.keras.models.Model(
-            model.inputs, [model.get_layer(last_conv_layer_name).output, model.output]
-        )
-        with tf.GradientTape() as tape:
-            last_conv_layer_output, preds = grad_model(img_array_processed)
-            if pred_index is None:
-                pred_index = tf.argmax(preds[0])
-            class_channel = preds[:, pred_index]
-        grads = tape.gradient(class_channel, last_conv_layer_output)
-        pooled_grads = tf.reduce_mean(grads, axis=(0, 1, 2))
-        last_conv_layer_output = last_conv_layer_output[0]
-        heatmap = last_conv_layer_output @ pooled_grads[..., tf.newaxis]
-        heatmap = tf.squeeze(heatmap)
-        heatmap = tf.maximum(heatmap, 0) / (tf.math.reduce_max(heatmap) + tf.keras.backend.epsilon())
-        return heatmap.numpy()
-
-    def generate_gradcam_overlay(original_img_array_uint8, heatmap, alpha=0.5):
-        heatmap_resized = cv2.resize(heatmap, (original_img_array_uint8.shape[1], original_img_array_uint8.shape[0]))
-        heatmap_rgb = np.uint8(255 * heatmap_resized)
-        heatmap_rgb = cv2.applyColorMap(heatmap_rgb, cv2.COLORMAP_JET)
-        superimposed_img = cv2.addWeighted(heatmap_rgb, alpha, original_img_array_uint8, 1 - alpha, 0)
-        return superimposed_img
-    # --- END PASTE ---
 
 
 # --- Konfigurasi Aplikasi ---
@@ -65,13 +36,25 @@ sample_images_data = {
 # Filter sample images yang benar-benar ada filenya
 valid_sample_images = {name: path for name, path in sample_images_data.items() if os.path.exists(path)}
 
+# --- PATH UNTUK GAMBAR HASIL EVALUASI ---
+PATH_GAMBAR_HOME_UTAMA = "sample_test_images/sea.jpg" # Ganti dengan path gambar utama untuk halaman Home
+PATH_CONFUSION_MATRIX_SMALL_BASELINE = "results/graph/baseline/mobilenetv3small_baseline_featureextract_confusion_matrix.png"
+PATH_TRAINING_HISTORY_SMALL_BASELINE = "results/graph/baseline/mobilenetv3small_baseline_featureextract_accuracy_loss.png"
+PATH_CONFUSION_MATRIX_LARGE_BASELINE = "results/graph/baseline/mobilenetv3large_baseline_featureextract_confusion_matrix.png"
+PATH_TRAINING_HISTORY_LARGE_BASELINE = "results/graph/baseline/mobilenetv3large_baseline_featureextract_accuracy_loss.png"
+
+PATH_CONFUSION_MATRIX_SMALL_FINETUNE = "results/graph/finetune/mobilenetv3_small_confusion_matrix.png"
+PATH_TRAINING_HISTORY_SMALL_FINETUNE = "results/graph/finetune/MobileNetV3_Small.png"
+PATH_CONFUSION_MATRIX_LARGE_FINETUNE = "results/graph/finetune/mobilenetv3_large_confusion_matrix.png"
+PATH_TRAINING_HISTORY_LARGE_FINETUNE = "results/graph/finetune/MobileNetV3_Large.png"
+# --- ----------------------------------------------------------- ---
+
 
 # --- Fungsi Bantuan ---
 @st.cache_resource # Cache resource agar model tidak di-load ulang setiap interaksi
 def load_keras_model(model_path):
     try:
         model = tf.keras.models.load_model(model_path)
-        st.success(f"Model berhasil dimuat dari: {model_path}")
         return model
     except Exception as e:
         st.error(f"Error memuat model dari {model_path}: {e}")
@@ -80,26 +63,18 @@ def load_keras_model(model_path):
 def preprocess_image_for_model(pil_image):
     """ Preprocess PIL image untuk input MobileNetV3 """
     img_resized = pil_image.resize((IMG_WIDTH, IMG_HEIGHT))
-    img_array = img_to_array(img_resized) # (height, width, channels), float32
-    img_array_expanded = np.expand_dims(img_array, axis=0) # (1, height, width, channels)
-    return mobilenet_v3_preprocess_input(img_array_expanded), img_array # Kembalikan juga array original (sebelum preprocess_input) untuk gradcam
+    img_array = img_to_array(img_resized)
+    img_array_expanded = np.expand_dims(img_array, axis=0)
+    return mobilenet_v3_preprocess_input(img_array_expanded), img_array
 
 def get_last_conv_layer_name(model):
     """ Mencari nama layer konvolusi terakhir sebelum GlobalAveragePooling """
-    for layer in reversed(model.layers):
-        if len(layer.output_shape) == 4 and isinstance(layer, (tf.keras.layers.Conv2D, tf.keras.layers.DepthwiseConv2D, tf.keras.layers.SeparableConv2D)):
-            if 'predictions' not in layer.name.lower() and 'dense' not in layer.name.lower() and 'global' not in layer.name.lower():
-                 return layer.name
-    st.warning("Tidak dapat menemukan nama layer konvolusi terakhir secara otomatis untuk Grad-CAM. Menggunakan fallback.")
-    # Fallback (HARUS DIVERIFIKASI DARI model.summary() Anda)
-    if 'small' in model.name.lower() or (hasattr(model, '_name') and 'small' in model._name.lower()): # Cek _name juga
-        return 'activation_55' # CONTOH untuk MobileNetV3Small
-    else:
-        return 'activation_37' # CONTOH untuk MobileNetV3Large
+    if model == 'small':
+        return 'activation_17'
+    elif model == 'large':
+        return 'activation_37'
 
-# --- Muat Model ---
-# Model dimuat sekali saat aplikasi dimulai atau saat dipilih
-# (Untuk efisiensi, bisa juga hanya load saat benar-benar akan digunakan)
+# --- Muat Model (hanya jika diperlukan di halaman demo) ---
 model_small = None
 model_large = None
 
@@ -133,23 +108,22 @@ if page == "🏠 Home":
 
     Silakan jelajahi menu lain untuk informasi lebih lanjut tentang dataset dan performa model.
     """)
-    st.image("https://www.researchgate.net/profile/Adrian-Rosebrock/publication/325559039/figure/fig1/AS:633957117681664@1528158885314/Sample-of-images-from-the-Intel-Image-Classification-dataset.png", caption="Contoh gambar dari dataset Intel Image Classification (Sumber: Rosebrock, PyImageSearch)")
 
 
 elif page == "🖼️ Demo Klasifikasi":
     st.header("🖼️ Demo Klasifikasi Gambar Pemandangan Alam")
 
-    model_choice = st.selectbox("Pilih Model:", ("MobileNetV3 Small", "MobileNetV3 Large"))
+    model_choice = st.selectbox("Pilih Model (Fine-tuned):", ("MobileNetV3 Small (Fine-tuned)", "MobileNetV3 Large (Fine-tuned)"))
 
     active_model = None
-    model_name_for_gradcam = "" # Untuk fallback Grad-CAM layer name
-    if model_choice == "MobileNetV3 Small":
-        if model_small is None: # Load jika belum
+    model_name_for_gradcam = "" 
+    if model_choice == "MobileNetV3 Small (Fine-tuned)":
+        if model_small is None: 
             model_small = load_keras_model(MODEL_PATH_SMALL)
         active_model = model_small
-        model_name_for_gradcam = "small"
+        model_name_for_gradcam = "small" 
     else:
-        if model_large is None: # Load jika belum
+        if model_large is None: 
             model_large = load_keras_model(MODEL_PATH_LARGE)
         active_model = model_large
         model_name_for_gradcam = "large"
@@ -157,7 +131,6 @@ elif page == "🖼️ Demo Klasifikasi":
     if active_model is None:
         st.error("Model yang dipilih gagal dimuat. Silakan periksa path model atau coba lagi.")
     else:
-        # --- Input Gambar ---
         st.subheader("Unggah Gambar Anda atau Pilih Contoh:")
         uploaded_file = st.file_uploader("Seret dan lepas gambar di sini, atau klik untuk memilih file", type=["jpg", "jpeg", "png"])
         
@@ -167,15 +140,15 @@ elif page == "🖼️ Demo Klasifikasi":
         if not valid_sample_images:
             st.warning("Tidak ada gambar contoh yang valid ditemukan. Pastikan path dan file benar.")
         else:
-            cols = st.columns(len(valid_sample_images))
+            cols = st.columns(min(len(valid_sample_images), 6))
             selected_sample_path = None
             for i, (name, path) in enumerate(valid_sample_images.items()):
-                with cols[i]:
+                with cols[i % len(cols)]:
                     try:
                         sample_img_pil = Image.open(path)
-                        st.image(sample_img_pil, caption=name, width=100) # Tampilkan thumbnail
+                        st.image(sample_img_pil, caption=name, width=100)
                         if st.button(f"Gunakan {name}", key=f"sample_{name}"):
-                            uploaded_file = path # Set uploaded_file ke path jika tombol ditekan
+                            uploaded_file = path 
                             selected_sample_path = path
                     except FileNotFoundError:
                         st.error(f"File contoh {path} tidak ditemukan.")
@@ -183,22 +156,20 @@ elif page == "🖼️ Demo Klasifikasi":
         input_image_pil = None
         if uploaded_file is not None:
             try:
-                # Jika tombol sampel ditekan, uploaded_file adalah path string
                 if isinstance(uploaded_file, str): 
                     input_image_pil = Image.open(uploaded_file)
-                else: # Jika dari file_uploader, itu adalah BytesIO object
+                else: 
                     input_image_pil = Image.open(uploaded_file)
             except Exception as e:
                 st.error(f"Error membuka gambar: {e}")
                 input_image_pil = None
         
         if input_image_pil:
-            st.subheader("Gambar yang Diproses:")
+            st.subheader("Hasil Analisis Gambar:")
             col1, col2 = st.columns(2)
             with col1:
-                st.image(input_image_pil, caption="Gambar Asli", use_column_width=True)
+                st.image(input_image_pil, caption="Gambar Asli", use_container_width=True)
 
-            # Pra-pemrosesan dan Prediksi
             processed_image_tensor, original_img_array_for_gradcam = preprocess_image_for_model(input_image_pil)
             
             try:
@@ -210,52 +181,105 @@ elif page == "🖼️ Demo Klasifikasi":
                 st.success(f"**Prediksi Kelas:** {predicted_class_name}")
                 st.info(f"**Kepercayaan:** {confidence:.2f}%")
 
-                # Visualisasi Grad-CAM
                 with col2:
-                    st.subheader("Visualisasi Grad-CAM")
+                    st.markdown("<h6>Visualisasi Grad-CAM</h6>", unsafe_allow_html=True)
                     try:
-                        # Dapatkan nama layer konvolusi terakhir dari model yang aktif
-                        # Perlu verifikasi nama layer ini dari model.summary()
-                        last_conv_name = get_last_conv_layer_name(active_model)
-                        
-                        # Pastikan original_img_array_for_gradcam adalah uint8
+                        last_conv_name = get_last_conv_layer_name(model_name_for_gradcam)
                         img_for_gradcam_uint8 = original_img_array_for_gradcam.astype(np.uint8)
-
                         heatmap = make_gradcam_heatmap(processed_image_tensor, active_model, last_conv_name, pred_index=predicted_class_index)
                         grad_cam_image = generate_gradcam_overlay(img_for_gradcam_uint8, heatmap)
-                        st.image(grad_cam_image, caption=f"Grad-CAM untuk '{predicted_class_name}'", use_column_width=True)
+                        st.image(grad_cam_image, caption=f"Grad-CAM untuk '{predicted_class_name}'", use_container_width=True)
                     except Exception as e:
                         st.error(f"Error saat membuat Grad-CAM: {e}")
-                        st.warning("Pastikan nama layer konvolusi terakhir untuk Grad-CAM sudah benar dan terverifikasi dari `model.summary()`.")
+                        st.warning(f"Detail error: {str(e)}")
+                        st.warning("Pastikan nama layer konvolusi terakhir (`get_last_conv_layer_name`) untuk Grad-CAM sudah benar dan terverifikasi dari `model.summary()`.")
 
             except Exception as e:
                 st.error(f"Error saat melakukan prediksi: {e}")
 
 elif page == "📊 Performa Model":
-    st.header("📊 Ringkasan Performa Model")
-    st.markdown("""
-    Berikut adalah ringkasan performa (hipotetis) dari model MobileNetV3 Small dan Large pada *test set* setelah pelatihan.
-    *(Catatan: Anda harus mengganti nilai-nilai ini dengan hasil aktual dari evaluasi model Anda)*
-    """)
+    st.header("📊 Ringkasan Performa Model pada Test Set")
+    st.markdown("Berikut adalah hasil evaluasi dari model MobileNetV3 Small dan Large, baik tahap *baseline (feature extraction)* maupun setelah *fine-tuning*.")
 
-    # --- DATA PERFORMA MODEL (GANTI DENGAN HASIL ANDA) ---
-    performance_data = {
-        "MobileNetV3 Small": {"Akurasi": "92.50%", "F1-Score (Macro Avg)": "0.92", "Catatan": "Cepat dan ringan."},
-        "MobileNetV3 Large": {"Akurasi": "94.20%", "F1-Score (Macro Avg)": "0.94", "Catatan": "Lebih akurat, sedikit lebih berat."},
+    performance_data_actual = {
+        "MobileNetV3 Small (Baseline)": {
+            "Test Accuracy": "89.27%",
+            "Test Loss": "0.2700",
+            "Epoch Terakhir Dilaporkan": "28/50 (val_accuracy: 0.8894)",
+            "Path Confusion Matrix": PATH_CONFUSION_MATRIX_SMALL_BASELINE, # Pastikan ini didefinisikan
+            "Path Grafik Training": PATH_TRAINING_HISTORY_SMALL_BASELINE, # Pastikan ini didefinisikan
+            "F1-Score (Macro Avg)": "0.89",
+        },
+        "MobileNetV3 Large (Baseline)": {
+            "Test Accuracy": "91.53%",
+            "Test Loss": "0.2310",
+            "Epoch Terakhir Dilaporkan": "29/50 (val_accuracy: 0.9108)",
+            "Path Confusion Matrix": PATH_CONFUSION_MATRIX_LARGE_BASELINE, # Pastikan ini didefinisikan
+            "Path Grafik Training": PATH_TRAINING_HISTORY_LARGE_BASELINE, # Pastikan ini didefinisikan
+            "F1-Score (Macro Avg)": "0.92",
+        },
+        "MobileNetV3 Small (Fine-tuned)": {
+            "Test Accuracy": "92.93%",
+            "Test Loss": "0.2106",
+            "Epoch Terakhir Dilaporkan": "37/50 (train_accuracy: 0.9605)",
+            "Path Confusion Matrix": PATH_CONFUSION_MATRIX_SMALL_FINETUNE, # Pastikan ini didefinisikan
+            "Path Grafik Training": PATH_TRAINING_HISTORY_SMALL_FINETUNE, # Pastikan ini didefinisikan
+            "F1-Score (Macro Avg)": "0.93",
+        },
+        "MobileNetV3 Large (Fine-tuned)": {
+            "Test Accuracy": "93.63%",
+            "Test Loss": "0.2376",
+            "Epoch Terakhir Dilaporkan": "43/50 (train_accuracy: 0.9944)",
+            "Path Confusion Matrix": PATH_CONFUSION_MATRIX_LARGE_FINETUNE, # Pastikan ini didefinisikan
+            "Path Grafik Training": PATH_TRAINING_HISTORY_LARGE_FINETUNE, # Pastikan ini didefinisikan
+            "F1-Score (Macro Avg)": "0.94",
+        }
     }
-    # --- ---------------------------------------------- ---
 
-    for model_name, metrics in performance_data.items():
+    # --- 1. Membuat Tabel Perbandingan Metrik di Awal ---
+    st.subheader("Tabel Ringkasan Performa Model")
+
+    # Siapkan data untuk tabel
+    summary_table_data = []
+    for model_name, metrics in performance_data_actual.items():
+        summary_table_data.append({
+            "Model": model_name,
+            "Test Accuracy": metrics["Test Accuracy"],
+            "Test Loss": metrics["Test Loss"],
+            "F1-Score (Macro Avg)": metrics.get("F1-Score (Macro Avg)", "N/A")
+        })
+
+    # Tampilkan tabel ringkasan
+    st.dataframe(summary_table_data, hide_index=True, use_container_width=True)
+    st.markdown("---") # Pemisah
+
+    for model_name, metrics in performance_data_actual.items():
         st.subheader(model_name)
-        for metric, value in metrics.items():
-            st.markdown(f"- **{metric}:** {value}")
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.markdown(f"- **Test Accuracy:** {metrics['Test Accuracy']}")
+            st.markdown(f"- **Test Loss:** {metrics['Test Loss']}")
+            st.markdown(f"- **Epoch Terakhir Dilaporkan:** {metrics['Epoch Terakhir Dilaporkan']}")
+            st.markdown(f"- **F1-Score (Macro Avg):** {metrics.get('F1-Score (Macro Avg)', 'N/A')}")
+
+        colgraph, colconf = st.columns(2)
+        with colgraph:
+            st.markdown("**Grafik Training History:**")
+            if os.path.exists(metrics["Path Grafik Training"]):
+                st.image(metrics["Path Grafik Training"], caption=f"Training History - {model_name}", use_container_width=True)
+            else:
+                st.warning(f"Gambar training history tidak ditemukan di: {metrics['Path Grafik Training']}. Harap perbarui path.")
+
+        with colconf:
+            st.markdown("**Confusion Matrix:**")
+            if os.path.exists(metrics["Path Confusion Matrix"]):
+                st.image(metrics["Path Confusion Matrix"], caption=f"Confusion Matrix - {model_name}", use_container_width=True)
+            else:
+                st.warning(f"Gambar confusion matrix tidak ditemukan di: {metrics['Path Confusion Matrix']}. Harap perbarui path.")
+
         st.markdown("---")
-    
-    st.markdown("### Contoh Confusion Matrix (Hipotetis)")
-    st.markdown("Anda dapat menampilkan gambar confusion matrix yang telah Anda simpan dari proses evaluasi di sini.")
-    # Contoh: st.image("path/to/your/confusion_matrix_small.png", caption="Confusion Matrix - MobileNetV3 Small")
-    # st.image("path/to/your/confusion_matrix_large.png", caption="Confusion Matrix - MobileNetV3 Large")
-    st.info("Untuk implementasi nyata, muat gambar confusion matrix Anda dari file.")
 
 
 elif page == "📚 Tentang Dataset":
@@ -275,12 +299,24 @@ elif page == "📚 Tentang Dataset":
     - **Ukuran Dataset:**
         - Sekitar 14,000 gambar untuk data latih (`train`).
         - Sekitar 3,000 gambar untuk data prediksi/uji (`test`).
-        - Sekitar 7,000 gambar untuk data segregasi (tidak digunakan langsung di proyek ini, tapi bagian dari dataset asli).
-    - **Ukuran Gambar:** Gambar-gambar memiliki resolusi 150x150 piksel. Untuk model MobileNetV3, gambar-gambar ini diubah ukurannya menjadi 224x224 piksel.
+    - **Ukuran Gambar:** Gambar-gambar memiliki resolusi asli 150x150 piksel. Untuk model MobileNetV3, gambar-gambar ini diubah ukurannya menjadi 224x224 piksel selama pra-pemrosesan.
     - **Sumber:** Gambar-gambar dikumpulkan dari berbagai sumber dan mencakup variasi yang cukup baik dalam setiap kelas.
 
     Anda dapat menemukan dataset ini di [Kaggle: Intel Image Classification](https://www.kaggle.com/datasets/puneet6060/intel-image-classification).
     """)
-    # Anda bisa menambahkan plot distribusi kelas dari EDA di sini jika diinginkan
-    # Contoh: st.image("path/to/your/class_distribution_plot.png", caption="Distribusi Kelas dalam Dataset")
-    st.info("Untuk implementasi nyata, muat gambar plot distribusi kelas Anda dari file.")
+    # --- GANTI PATH GAMBAR DI BAWAH INI JIKA PERLU ---
+    PATH_GAMBAR_DISTRIBUSI_KELAS_TRAINING = "results/data/distribusi_training.png" 
+    PATH_GAMBAR_DISTRIBUSI_KELAS_TESTING = "results/data/distribusi_test.png" 
+    if os.path.exists(PATH_GAMBAR_DISTRIBUSI_KELAS_TRAINING and os.path.exists(PATH_GAMBAR_DISTRIBUSI_KELAS_TESTING)):
+        st.subheader("Distribusi Kelas dalam Dataset")
+        st.markdown("Berikut adalah distribusi jumlah gambar untuk setiap kelas dalam dataset:")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.image(PATH_GAMBAR_DISTRIBUSI_KELAS_TRAINING, caption="Distribusi Kelas pada Data Latih")
+        with col2:
+            st.image(PATH_GAMBAR_DISTRIBUSI_KELAS_TESTING, caption="Distribusi Kelas pada Data Uji")
+        st.markdown("Gambar di atas menunjukkan jumlah gambar untuk setiap kelas dalam data latih dan uji. Distribusi yang seimbang antar kelas sangat penting untuk performa model yang baik.")
+        st.markdown("---")
+    else:
+        st.info("Anda dapat menambahkan gambar plot distribusi kelas Anda di sini jika sudah ada.")
+    # --- ----------------------------------------- ---
