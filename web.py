@@ -300,7 +300,7 @@ elif page == "📚 Tentang Dataset":
 
     Anda dapat menemukan dataset ini di [Kaggle: Intel Image Classification](https://www.kaggle.com/datasets/puneet6060/intel-image-classification).
     """)
--
+
     PATH_GAMBAR_DISTRIBUSI_KELAS_TRAINING = "results/data/distribusi_training.png" 
     PATH_GAMBAR_DISTRIBUSI_KELAS_TESTING = "results/data/distribusi_test.png" 
     if os.path.exists(PATH_GAMBAR_DISTRIBUSI_KELAS_TRAINING and os.path.exists(PATH_GAMBAR_DISTRIBUSI_KELAS_TESTING)):
