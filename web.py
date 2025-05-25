@@ -9,21 +9,19 @@ import os
 try:
     from app_utils.grad_cam_utils import make_gradcam_heatmap, generate_gradcam_overlay
 except ImportError:
-    st.error("Pastikan file app_utils/grad_cam_utils.py ada dan benar jika Anda memisahkan fungsi Grad-CAM.")
-
+    st.error("file app_utils/grad_cam_utils.py tidak ditemukan. Pastikan file tersebut ada di direktori yang benar.")
 
 # --- Konfigurasi Aplikasi ---
 st.set_page_config(page_title="Klasifikasi Pemandangan Alam", layout="wide")
 
-# Kelas target (SESUAIKAN DENGAN DATASET ANDA)
 CLASSES = ['buildings', 'forest', 'glacier', 'mountain', 'sea', 'street']
 IMG_WIDTH, IMG_HEIGHT = 224, 224
 
-# Path ke model (SESUAIKAN)
+# Path ke model
 MODEL_PATH_SMALL = 'results/model/finetune/mobilenet_v3_small_finetune_best.keras'
 MODEL_PATH_LARGE = 'results/model/finetune/mobilenet_v3_large_finetune_best.keras'
 
-# Path ke gambar contoh (SESUAIKAN)
+# Path ke gambar contoh
 SAMPLE_IMAGE_DIR = 'sample_test_images/'
 sample_images_data = {
     "Bangunan": os.path.join(SAMPLE_IMAGE_DIR, "buildings.jpg"),
@@ -33,11 +31,10 @@ sample_images_data = {
     "Laut": os.path.join(SAMPLE_IMAGE_DIR, "sea.jpg"),
     "Jalan": os.path.join(SAMPLE_IMAGE_DIR, "street.jpg"),
 }
-# Filter sample images yang benar-benar ada filenya
+# Filter sample images
 valid_sample_images = {name: path for name, path in sample_images_data.items() if os.path.exists(path)}
 
 # --- PATH UNTUK GAMBAR HASIL EVALUASI ---
-PATH_GAMBAR_HOME_UTAMA = "sample_test_images/sea.jpg" # Ganti dengan path gambar utama untuk halaman Home
 PATH_CONFUSION_MATRIX_SMALL_BASELINE = "results/graph/baseline/mobilenetv3small_baseline_featureextract_confusion_matrix.png"
 PATH_TRAINING_HISTORY_SMALL_BASELINE = "results/graph/baseline/mobilenetv3small_baseline_featureextract_accuracy_loss.png"
 PATH_CONFUSION_MATRIX_LARGE_BASELINE = "results/graph/baseline/mobilenetv3large_baseline_featureextract_confusion_matrix.png"
@@ -84,7 +81,6 @@ menu_options = ["🏠 Home", "🖼️ Demo Klasifikasi", "📊 Performa Model", 
 page = st.sidebar.radio("Pilih Halaman:", menu_options)
 
 # --- Konten Halaman ---
-
 if page == "🏠 Home":
     st.title("Selamat Datang di Aplikasi Klasifikasi Pemandangan Alam! 🏞️")
     st.markdown("""
@@ -206,32 +202,32 @@ elif page == "📊 Performa Model":
             "Test Accuracy": "89.27%",
             "Test Loss": "0.2700",
             "Epoch Terakhir Dilaporkan": "28/50 (val_accuracy: 0.8894)",
-            "Path Confusion Matrix": PATH_CONFUSION_MATRIX_SMALL_BASELINE, # Pastikan ini didefinisikan
-            "Path Grafik Training": PATH_TRAINING_HISTORY_SMALL_BASELINE, # Pastikan ini didefinisikan
+            "Path Confusion Matrix": PATH_CONFUSION_MATRIX_SMALL_BASELINE,
+            "Path Grafik Training": PATH_TRAINING_HISTORY_SMALL_BASELINE,
             "F1-Score (Macro Avg)": "0.89",
         },
         "MobileNetV3 Large (Baseline)": {
             "Test Accuracy": "91.53%",
             "Test Loss": "0.2310",
             "Epoch Terakhir Dilaporkan": "29/50 (val_accuracy: 0.9108)",
-            "Path Confusion Matrix": PATH_CONFUSION_MATRIX_LARGE_BASELINE, # Pastikan ini didefinisikan
-            "Path Grafik Training": PATH_TRAINING_HISTORY_LARGE_BASELINE, # Pastikan ini didefinisikan
+            "Path Confusion Matrix": PATH_CONFUSION_MATRIX_LARGE_BASELINE,
+            "Path Grafik Training": PATH_TRAINING_HISTORY_LARGE_BASELINE,
             "F1-Score (Macro Avg)": "0.92",
         },
         "MobileNetV3 Small (Fine-tuned)": {
             "Test Accuracy": "92.93%",
             "Test Loss": "0.2106",
             "Epoch Terakhir Dilaporkan": "37/50 (train_accuracy: 0.9605)",
-            "Path Confusion Matrix": PATH_CONFUSION_MATRIX_SMALL_FINETUNE, # Pastikan ini didefinisikan
-            "Path Grafik Training": PATH_TRAINING_HISTORY_SMALL_FINETUNE, # Pastikan ini didefinisikan
+            "Path Confusion Matrix": PATH_CONFUSION_MATRIX_SMALL_FINETUNE,
+            "Path Grafik Training": PATH_TRAINING_HISTORY_SMALL_FINETUNE,
             "F1-Score (Macro Avg)": "0.93",
         },
         "MobileNetV3 Large (Fine-tuned)": {
             "Test Accuracy": "93.63%",
             "Test Loss": "0.2376",
             "Epoch Terakhir Dilaporkan": "43/50 (train_accuracy: 0.9944)",
-            "Path Confusion Matrix": PATH_CONFUSION_MATRIX_LARGE_FINETUNE, # Pastikan ini didefinisikan
-            "Path Grafik Training": PATH_TRAINING_HISTORY_LARGE_FINETUNE, # Pastikan ini didefinisikan
+            "Path Confusion Matrix": PATH_CONFUSION_MATRIX_LARGE_FINETUNE,
+            "Path Grafik Training": PATH_TRAINING_HISTORY_LARGE_FINETUNE,
             "F1-Score (Macro Avg)": "0.94",
         }
     }
@@ -251,7 +247,7 @@ elif page == "📊 Performa Model":
 
     # Tampilkan tabel ringkasan
     st.dataframe(summary_table_data, hide_index=True, use_container_width=True)
-    st.markdown("---") # Pemisah
+    st.markdown("---")
 
     for model_name, metrics in performance_data_actual.items():
         st.subheader(model_name)
@@ -304,7 +300,7 @@ elif page == "📚 Tentang Dataset":
 
     Anda dapat menemukan dataset ini di [Kaggle: Intel Image Classification](https://www.kaggle.com/datasets/puneet6060/intel-image-classification).
     """)
-    # --- GANTI PATH GAMBAR DI BAWAH INI JIKA PERLU ---
+-
     PATH_GAMBAR_DISTRIBUSI_KELAS_TRAINING = "results/data/distribusi_training.png" 
     PATH_GAMBAR_DISTRIBUSI_KELAS_TESTING = "results/data/distribusi_test.png" 
     if os.path.exists(PATH_GAMBAR_DISTRIBUSI_KELAS_TRAINING and os.path.exists(PATH_GAMBAR_DISTRIBUSI_KELAS_TESTING)):

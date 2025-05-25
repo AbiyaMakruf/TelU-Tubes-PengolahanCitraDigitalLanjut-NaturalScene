@@ -1,9 +1,7 @@
-# Di dalam app_utils/grad_cam_utils.py
 import tensorflow as tf
 import numpy as np
 import cv2
 
-# Fungsi make_gradcam_heatmap Anda dari kode sebelumnya
 def make_gradcam_heatmap(img_array_processed, model, last_conv_layer_name, pred_index=None):
     grad_model = tf.keras.models.Model(
         model.inputs, [model.get_layer(last_conv_layer_name).output, model.output]
