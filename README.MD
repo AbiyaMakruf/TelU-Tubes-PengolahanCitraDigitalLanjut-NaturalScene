@@ -22,7 +22,7 @@ Proyek ini menggali konsep inti dalam **Pengolahan Citra Digital (PCD)**, yang d
 
 ---
 
-## 📦 Komponen Proyek (Project Components) Sesuai Tugas Awal
+## 📦 Komponen Proyek (Project Components)
 
 Berikut adalah komponen umum yang menjadi acuan dalam pengembangan proyek ini, beserta adaptasinya:
 
@@ -48,46 +48,55 @@ Berikut adalah komponen umum yang menjadi acuan dalam pengembangan proyek ini, b
 
 ---
 
-## 🚀 Struktur Direktori Proyek (Contoh)
-proyek_klasifikasi_alam/
-├── dataset/                     # Dataset Intel Image Classification
-│   ├── train/
-│   └── test/
-├── saved_models/                # Model .keras yang sudah dilatih
-│   ├── mobilenet_v3_small_finetune_best.keras
-│   └── mobilenet_v3_large_finetune_best.keras
-├── results/                     # Tempat menyimpan hasil evaluasi (gambar, csv, dll.)
-│   ├── images/                  # Contoh: confusion matrices, training histories
-│   │   ├── cm_small_baseline.png
-│   │   └── history_large_finetune.png
-│   └── reports/                 # (Opsional) laporan dalam format lain
-├── sample_test_images/          # Gambar contoh untuk demo aplikasi Streamlit
-│   ├── buildings.jpg
-│   └── ...
-├── app_utils/                   # (Opsional) Skrip bantuan Python
-│   ├── init.py
-│   └── grad_cam_utils.py
-├── streamlit_app.py             # Skrip utama aplikasi Streamlit
-├── requirements.txt             # Daftar dependensi Python
-└── README.md                    # File ini
+## 🚀 Struktur Direktori Proyek
+```cmd
+.
+├── app_utils
+│   └── __pycache__
+├── dataset
+│   ├── pred
+│   ├── test
+│   │   ├── buildings
+│   │   ├── forest
+│   │   ├── glacier
+│   │   ├── mountain
+│   │   ├── sea
+│   │   └── street
+│   └── train
+│       ├── buildings
+│       ├── forest
+│       ├── glacier
+│       ├── mountain
+│       ├── sea
+│       └── street
+├── results
+│   ├── data
+│   ├── graph
+│   │   ├── baseline
+│   │   └── finetune
+│   └── model
+│       ├── baseline
+│       └── finetune
+└── sample_test_images
+```
 
 ---
 
 ## ⚙️ Cara Menjalankan Proyek
 
-1.  **Clone Repository (Jika Ada):**
+1.  **Clone Repository:**
     ```bash
-    git clone [URL_REPOSITORY_ANDA]
-    cd proyek_klasifikasi_alam
+    git clone https://github.com/AbiyaMakruf/TelU-Tubes-PengolahanCitraDigitalLanjut-NaturalScene.git
+    cd TelU-Tubes-PengolahanCitraDigitalLanjut-NaturalScene
     ```
 2.  **Siapkan Dataset:**
-    * Unduh dataset [Intel Image Classification dari Kaggle](https://www.kaggle.com/datasets/puneet6060/intel-image-classification).
-    * Ekstrak dan letakkan isinya (folder `seg_train`, `seg_test`, `seg_pred`) ke dalam direktori `dataset/`. Ubah nama `seg_train` menjadi `train` dan `seg_test` menjadi `test` jika kode Python Anda menggunakan nama tersebut.
+    * Unduh dataset [Intel Image Classification dari Kaggle](https://www.kaggle.com/datasets/puneet6060/intel-image-classification) atau,
+    * unduh menggunakan code yang sudah disediakan.
+    * Ekstrak dan letakkan isinya ke dalam direktori `dataset/`.
 3.  **Buat Virtual Environment (Direkomendasikan):**
     ```bash
-    python -m venv venv
-    source venv/bin/activate  # Linux/macOS
-    # venv\Scripts\activate    # Windows
+    conda create --name PCDL_env python=3.10 -y
+    conda activate PCDL_env
     ```
 4.  **Instal Dependensi:**
     ```bash
@@ -95,24 +104,24 @@ proyek_klasifikasi_alam/
     ```
     *(Pastikan file `requirements.txt` berisi semua pustaka yang dibutuhkan seperti `tensorflow`, `opencv-python`, `matplotlib`, `scikit-learn`, `streamlit`, `numpy`, `pillow`)*
 5.  **Latih Model (Jika Belum Ada Model Tersimpan):**
-    * Jalankan skrip pelatihan Python Anda (misalnya, `train_model.py` - *Anda perlu membuat skrip ini atau menyertakan notebook Jupyter jika pelatihan belum dilakukan*).
-    * Pastikan model terbaik disimpan di direktori `saved_models/`.
+    * Jalankan skrip pelatihan Python (misalnya, `notebook.ipynb` - *Anda perlu membuat skrip ini atau menyertakan notebook Jupyter jika pelatihan belum dilakukan*).
+    * Pastikan model terbaik disimpan di direktori `results/model/`.
 6.  **Jalankan Aplikasi Web Streamlit:**
     * Pastikan path ke model (`.keras`) dan gambar contoh di `streamlit_app.py` sudah benar.
     * Pastikan path ke gambar hasil evaluasi (confusion matrix, grafik training) di `streamlit_app.py` pada halaman "Performa Model" juga sudah benar.
     ```bash
-    streamlit run streamlit_app.py
+    streamlit run web.py
     ```
     Aplikasi akan terbuka di browser Anda.
 
 ---
 
-## 📈 Hasil Utama (Contoh Berdasarkan Data Anda)
+## 📈 Hasil Utama
 
 | Model                                         | Test Accuracy | Test Loss | Catatan                                    |
 | :-------------------------------------------- | :------------ | :-------- | :----------------------------------------- |
-| MobileNetV3 Small (Baseline - Feat. Extract.) | 89.27%        | 0.2700    | Performa awal hanya dengan melatih *head*.   |
-| MobileNetV3 Large (Baseline - Feat. Extract.) | 91.53%        | 0.2310    | Model lebih besar menunjukkan dasar lebih baik. |
+| MobileNetV3 Small (Baseline) | 89.27%        | 0.2700    | Performa awal hanya dengan melatih *head*.   |
+| MobileNetV3 Large (Baseline) | 91.53%        | 0.2310    | Model lebih besar menunjukkan dasar lebih baik. |
 | **MobileNetV3 Small (Fine-tuned)** | **92.93%** | **0.2106**| Peningkatan signifikan setelah fine-tuning. |
 | **MobileNetV3 Large (Fine-tuned)** | **93.63%** | **0.2376**| Performa terbaik, meskipun loss sedikit naik. |
 
@@ -132,8 +141,6 @@ proyek_klasifikasi_alam/
     * Metodologi yang Digunakan
     * Hasil dan Pembahasan
     * Kesimpulan dan Wawasan Utama
-
-🔗 Contoh ide proyek (Referensi Umum): [Stanford EE368 Project List](https://web.stanford.edu/class/ee368/Project)
 
 ---
 
@@ -186,7 +193,7 @@ Proposal Anda harus menjawab:
 
 ---
 
-## 💭 Refleksi dan Pembelajaran (Contoh untuk Ditambahkan di Laporan Akhir)
+## 💭 Refleksi dan Pembelajaran
 
 * Pentingnya *fine-tuning* dibandingkan hanya *feature extraction* pada model *pre-trained*.
 * Peran Grad-CAM dalam memahami keputusan model dan melakukan *debugging* kualitatif.
