@@ -195,7 +195,7 @@ elif page == "🖼️ Demo Klasifikasi":
 
 elif page == "📊 Performa Model":
     st.header("📊 Ringkasan Performa Model pada Test Set")
-    st.markdown("Berikut adalah hasil evaluasi dari model MobileNetV3 Small dan Large, baik tahap *baseline (feature extraction)* maupun setelah *fine-tuning*.")
+    st.markdown("Berikut adalah hasil evaluasi dari model MobileNetV3 Small dan Large, baik tahap *baseline* maupun setelah *fine-tuning*.")
 
     performance_data_actual = {
         "MobileNetV3 Small (Baseline)": {
@@ -298,7 +298,7 @@ elif page == "📚 Tentang Dataset":
     - **Ukuran Gambar:** Gambar-gambar memiliki resolusi asli 150x150 piksel. Untuk model MobileNetV3, gambar-gambar ini diubah ukurannya menjadi 224x224 piksel selama pra-pemrosesan.
     - **Sumber:** Gambar-gambar dikumpulkan dari berbagai sumber dan mencakup variasi yang cukup baik dalam setiap kelas.
 
-    Anda dapat menemukan dataset ini di [Kaggle: Intel Image Classification](https://www.kaggle.com/datasets/puneet6060/intel-image-classification).
+    Dapat menemukan dataset ini di [Kaggle: Intel Image Classification](https://www.kaggle.com/datasets/puneet6060/intel-image-classification).
     """)
 
     PATH_GAMBAR_DISTRIBUSI_KELAS_TRAINING = "results/data/distribusi_training.png" 
@@ -314,5 +314,5 @@ elif page == "📚 Tentang Dataset":
         st.markdown("Gambar di atas menunjukkan jumlah gambar untuk setiap kelas dalam data latih dan uji. Distribusi yang seimbang antar kelas sangat penting untuk performa model yang baik.")
         st.markdown("---")
     else:
-        st.info("Anda dapat menambahkan gambar plot distribusi kelas Anda di sini jika sudah ada.")
+        st.warning("Gambar distribusi kelas tidak ditemukan. Pastikan path gambar benar dan file tersedia.")
     # --- ----------------------------------------- ---
